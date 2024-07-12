@@ -1,4 +1,5 @@
 <script lang="ts">
+	import getPkce from 'oauth-pkce';
 	import { env } from '$env/dynamic/public';
 	import { getUserInfo } from '$lib/rauthy';
 	import { ProgressRadial } from '@skeletonlabs/skeleton';
@@ -60,6 +61,33 @@
 	const siteUrl = profile?.custom_domain
 		? `https://${profile.custom_domain}`
 		: `${publicUrl.protocol}//${userName}.${env.PUBLIC_DOMAIN}`;
+
+        const AddDomainTakingNames = async (e: Event) => {
+                e.preventDefault();
+
+                const [challenge, verifier] = await new Promise((resolve, reject) => {
+                        getPkce(64, (error, { challenge, verifier }) => {
+                                if (!error) {
+                                        resolve([challenge, verifier]);
+                                }
+                                else {
+                                        reject(error);
+                                }
+                        });
+                });
+
+                const state = crypto.randomUUID();
+                localStorage.setItem('namedrop_code_verifier_' + state, verifier);
+                const url = new URL(`${env.PUBLIC_NAMEDROP_URI}/authorize`);
+                url.searchParams.set('client_id', window.location.origin);
+                url.searchParams.set('redirect_uri', window.location.origin + '/account/namedrop/callback');
+                url.searchParams.set('response_type', 'code');
+                url.searchParams.set('scope', 'subdomain');
+                url.searchParams.set('code_challenge', challenge);
+                url.searchParams.set('code_challenge_method', 'S256');
+                url.searchParams.set('state', state);
+                window.location.href = url.href;
+        };
 </script>
 
 <svelte:head>
@@ -134,6 +162,9 @@
 							<button disabled={!domainValid} class="variant-ghost btn"> Save </button>
 						</div>
 					</form>
+                                        <button type="button" class="variant-ghost-surface btn" onclick={AddDomainTakingNames} >
+                                                Connect Domain with TakingNames
+                                        </button>
 				</div>
 			{:else}
 				<p class="text-lg">You must set a username in the profile page to generate a website.</p>
