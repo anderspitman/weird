@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import getPkce from 'oauth-pkce';
 	import { env } from '$env/dynamic/public';
 	import { getUserInfo } from '$lib/rauthy';
@@ -88,6 +89,14 @@
                 url.searchParams.set('state', state);
                 window.location.href = url.href;
         };
+
+        onMount(async () => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const domainParam = urlParams.get('domain');
+                if (domainParam) {
+                        customDomain = domainParam;
+                }
+        });
 </script>
 
 <svelte:head>

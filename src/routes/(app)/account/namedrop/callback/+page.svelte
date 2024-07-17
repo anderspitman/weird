@@ -1,8 +1,15 @@
 <script lang="ts">
-	import { beforeUpdate } from 'svelte';
+	import { onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
+	import { getUserInfo } from '$lib/rauthy';
 
-        beforeUpdate(async () => {
+        let domainStatus = '';
+	const userInfo = getUserInfo();
+
+        onMount(async () => {
+
+                console.log(userInfo);
+
                 const url = new URL(window.location.href);
 
                 const state = url.searchParams.get('state');
@@ -40,14 +47,16 @@
                 const tokenData = await response.json();
 
                 const host = tokenData.permissions[0].host;
+                const domain = tokenData.permissions[0].domain;
+                const token = tokenData.access_token;
 
                 const recordType = host ? 'CNAME' : 'ANAME';
                 const recordValue = env.PUBLIC_DOMAIN.startsWith('localhost') ? 'weird.one' : env.PUBLIC_DOMAIN;
 
-                const recRes = await fetch(`${env.PUBLIC_NAMEDROP_URI}/records?access_token=${tokenData.access_token}`, {
+                const recRes = await fetch(`${env.PUBLIC_NAMEDROP_URI}/records?access_token=${token}`, {
                         method: 'POST',
                         body: JSON.stringify({
-                                domain: tokenData.permissions[0].domain,
+                                domain,
                                 host,
                                 type: recordType,
                                 value: recordValue,
@@ -55,7 +64,13 @@
                         }),
                 });
 
-                window.location.href = '/auth/v1/account';
+                if (recRes.ok) {
+                        const fqdn = `${host}.${domain}`;
+                        window.location.href = `/account/${userInfo.id}/custom-domain?domain=${fqdn}`;
+                }
+                else {
+                        domainStatus = "Failed to set domain";
+                }
         });
 
 </script>
@@ -66,4 +81,9 @@
 </svelte:head>
 
 <main>
+        <div class="card flex w-[600px] max-w-[90%] flex-col gap-4 p-8 text-xl">
+                <p>
+                        {domainStatus}
+                </p>
+        </div>
 </main>
